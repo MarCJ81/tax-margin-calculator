@@ -74,6 +74,7 @@
 | `index.html` | 앱 전체(HTML+CSS+JS). 계산 코어는 `==CORE-START==` ~ `==CORE-END==` 블록 |
 | `test.js` | 계산 코어 단위 테스트 (`node test.js`) |
 | `uitest.py` | 실제 Chrome 데스크톱·모바일 검증 + A4 PDF 1쪽 확인 (`python3 uitest.py`) |
+| `livetest.py` | 배포된 실서버 검증 + 라이브 스크린샷 (`python3 livetest.py`) |
 | `assets/fonts/*.woff2` | IBM Plex Sans KR (로컬 임베드, CDN 없음) |
 | `privacy.html` | 개인정보 처리방침 (같은 A안 토큰) |
 | `preview-desktop.png` / `preview-mobile.png` | 1440×900 · 390×844 화면 캡처 |
@@ -86,8 +87,11 @@ $ node test.js
 108 passed, 0 failed
 
 $ python3 uitest.py
-221 passed, 0 failed
+232 passed, 0 failed
 EXIT:0
+
+$ python3 livetest.py   # 배포된 GitHub Pages 실서버
+35 passed, 0 failed
 ```
 
 - 데스크톱 1440×900 · 모바일 390×844에서 세 모드 계산값, 경고, 요약, 복사, JSON 백업/복원, 자동 저장, 초기화를 전수 확인
@@ -97,6 +101,7 @@ EXIT:0
 - **결과 카드 PNG** — 세 모드 모두 1080×1350 PNG 다운로드, 바탕 `#FAFAFA`·코발트·잉크 픽셀 확인
 - 세 모드 각각 실제 Chrome 인쇄로 **A4 1쪽 PDF**(595×842pt) 생성 확인, 리포트는 A안 잉크/코발트로 재도색
 - **정적 검사** — 외부 script/style/img 참조 0건, 이메일·휴대전화 번호·개인 실명 0건, 토큰 원문 확인
+- **실서버 검증** — `livetest.py`로 https://marcj81.github.io/tax-margin-calculator/ 를 열어 35개 항목 통과, 라이브 스크린샷은 `work/live-shots-redesign/tax-a.png`
 - 외부 요청 0건, 콘솔 에러 0건, 가로 스크롤 없음
 - Chrome은 `--no-sandbox`로 구동하고, 공유 환경의 스레드 한도로 기동이 실패하면 최대 20회 재시도합니다(`uitest.py`의 `start_browser`). `--single-process`는 쓰지 않습니다.
 - 공유 라이브러리는 `/workspace/scratch/chromelibs`(없으면 `/workspace/scratch/calc/libs`)를 `LD_LIBRARY_PATH`에 넣습니다.
