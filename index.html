@@ -1075,13 +1075,45 @@ fieldset.field{border:0;padding:0;margin:0 0 14px;min-width:0}
   <p class="rp-stamp">1인사업자 부가세·종소세·순수익 계산기 · 서버 전송 0건</p>
 </div>
 
+<script src="assets/vendor/decimal.min.js"></script>
 <script>
 
 'use strict';
 /* ==CORE-START== */
-/* 1인사업자 세금·순수익 계산기 계산 코어 (2026년 기준) */
+/* 1인사업자 세금·순수익 계산기 계산 코어 (2026년 기준)
+   금액 연산은 decimal.js(MIT, assets/vendor/decimal.min.js)로만 한다. */
 const TAX_CORE = (function () {
   const YEAR = 2026;
+
+  /* ── decimal.js 고정밀 연산 (MikeMcl/decimal.js, MIT) ──────────────
+     부동소수점 오차(0.1 + 0.2)와 세율 곱셈·원단위 절사의 드리프트를 없앤다.
+     엔진이 없으면 조용히 틀린 숫자를 내지 않도록 즉시 실패한다. */
+  const DEC = (function () {
+    if (typeof Decimal !== 'function') {
+      throw new Error('decimal.js 엔진을 불러오지 못했습니다 (assets/vendor/decimal.min.js)');
+    }
+    Decimal.set({ precision: 40, rounding: Decimal.ROUND_HALF_UP, toExpNeg: -40, toExpPos: 40 });
+    function of(v) {
+      if (v instanceof Decimal) return v;
+      if (v === null || v === undefined || v === '') return new Decimal(0);
+      if (typeof v === 'number') return new Decimal(isFinite(v) ? v : 0);
+      const s = String(v).replace(/,/g, '').trim();
+      try { return new Decimal(s); } catch (e) { return new Decimal(0); }
+    }
+    return {
+      of: of,
+      engine: 'decimal.js v10.6.0',
+      isDecimal: typeof Decimal.isDecimal === 'function' && Decimal.isDecimal(new Decimal(1)),
+      plus: function (a, b) { return of(a).plus(of(b)); },
+      minus: function (a, b) { return of(a).minus(of(b)); },
+      times: function (a, b) { return of(a).times(of(b)); },
+      div: function (a, b) { return of(a).div(of(b)); },
+      roundWon: function (v) { return of(v).toDecimalPlaces(0, Decimal.ROUND_HALF_UP).toNumber(); },
+      floorWon: function (v) { return of(v).toDecimalPlaces(0, Decimal.ROUND_FLOOR).toNumber(); },
+      floor10: function (v) { return of(v).div(10).toDecimalPlaces(0, Decimal.ROUND_FLOOR).times(10).toNumber(); },
+      roundDp: function (v, dp) { return of(v).toDecimalPlaces(dp || 0, Decimal.ROUND_HALF_UP); }
+    };
+  })();
 
   // ── 부가가치세 ──────────────────────────────────────────────
   const VAT = {
@@ -1145,14 +1177,14 @@ const TAX_CORE = (function () {
     const x = parseFloat(s);
     return isFinite(x) ? x : 0;
   }
-  function won(v) { return Math.round(n(v)); }
+  function won(v) { return DEC.roundWon(n(v)); }
   function clamp(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
 
   // ── 누진세율 ────────────────────────────────────────────────
   function progressive(base) {
     const b = Math.max(0, won(base));
     const row = INCOME.brackets.find(function (r) { return b <= r.limit; }) || INCOME.brackets[INCOME.brackets.length - 1];
-    const tax = Math.max(0, Math.round(b * row.rate - row.deduction));
+    const tax = Math.max(0, DEC.roundWon(DEC.of(b).times(row.rate).minus(row.deduction)));
     return { tax: tax, rate: row.rate, deduction: row.deduction, marginal: row.rate };
   }
 
@@ -1164,12 +1196,12 @@ const TAX_CORE = (function () {
     const cardSales = Math.max(0, won(o.cardSales));
     const useCard = o.cardCredit !== false;
 
-    const salesTax = Math.round(sales * 10 / 110);
-    const purchaseTax = Math.round(purchases * 10 / 110);
+    const salesTax = DEC.roundWon(DEC.div(DEC.times(sales, 10), 110));
+    const purchaseTax = DEC.roundWon(DEC.div(DEC.times(purchases, 10), 110));
     let before = salesTax - purchaseTax;
     let cardCredit = 0, cardApplied = 0;
     if (useCard && cardSales > 0 && sales / 1.1 <= VAT.cardSalesCap) {
-      cardCredit = Math.min(Math.round(cardSales * VAT.cardRate), VAT.cardCap);
+      cardCredit = Math.min(DEC.roundWon(DEC.times(cardSales, VAT.cardRate)), VAT.cardCap);
       cardApplied = Math.min(cardCredit, Math.max(0, before));
     }
     const payable = before - cardApplied;
@@ -1193,12 +1225,12 @@ const TAX_CORE = (function () {
     const eligible = periodSales < VAT.simpleLimit;
     const exempt = periodSales < VAT.exemptLimit;
 
-    const base = Math.round(sales * rate * 0.1);
-    const purchaseCredit = Math.min(base, Math.round(purchases * VAT.purchaseCreditRate));
+    const base = DEC.roundWon(DEC.times(DEC.times(sales, rate), '0.1'));
+    const purchaseCredit = Math.min(base, DEC.roundWon(DEC.times(purchases, VAT.purchaseCreditRate)));
     let remaining = Math.max(0, base - purchaseCredit);
     let cardCredit = 0, cardApplied = 0;
     if (useCard && cardSales > 0 && periodSales / 1.1 < VAT.cardSalesCap) {
-      cardCredit = Math.min(Math.round(cardSales * VAT.cardRate), VAT.cardCap);
+      cardCredit = Math.min(DEC.roundWon(DEC.times(cardSales, VAT.cardRate)), VAT.cardCap);
       cardApplied = Math.min(cardCredit, remaining);
     }
     const due = exempt ? 0 : Math.max(0, remaining - cardApplied);
@@ -1231,11 +1263,11 @@ const TAX_CORE = (function () {
   // ── 단순경비율 ──────────────────────────────────────────────
   function simpleExpense(income, rate, overRate) {
     const inc = Math.max(0, won(income));
-    const r1 = n(rate) / 100;
-    const r2 = (overRate == null || n(overRate) === 0) ? r1 : n(overRate) / 100;
+    const r1 = DEC.of(n(rate)).div(100);
+    const r2 = (overRate == null || n(overRate) === 0) ? r1 : DEC.of(n(overRate)).div(100);
     const first = Math.min(inc, INCOME.overThreshold);
     const rest = Math.max(0, inc - INCOME.overThreshold);
-    return Math.round(first * r1 + rest * r2);
+    return DEC.roundWon(DEC.plus(DEC.times(first, r1), DEC.times(rest, r2)));
   }
 
   // ── 노란우산 소득공제 한도 ──────────────────────────────────
@@ -1249,10 +1281,11 @@ const TAX_CORE = (function () {
 
   // ── 국민연금 지역가입자 추정 ────────────────────────────────
   function pensionEstimate(annualIncome) {
-    const month = Math.max(0, won(annualIncome)) / 12;
-    const base = Math.floor(clamp(month, INCOME.pensionMin, INCOME.pensionMax) / 1000) * 1000;
-    const monthly = Math.floor(base * INCOME.pensionRate / 10) * 10;
-    return { base: base, monthly: monthly, annual: monthly * 12 };
+    const month = DEC.div(Math.max(0, won(annualIncome)), 12);
+    const base = DEC.floorWon(DEC.div(clamp(month.toNumber(), INCOME.pensionMin, INCOME.pensionMax), 1000)).valueOf();
+    const baseRounded = base * 1000;
+    const monthly = DEC.floorWon(DEC.div(DEC.times(baseRounded, INCOME.pensionRate), 10)) * 10;
+    return { base: baseRounded, monthly: monthly, annual: monthly * 12 };
   }
 
   // ── 종합소득세 정산 (3.3% 프리랜서) ─────────────────────────
@@ -1280,10 +1313,10 @@ const TAX_CORE = (function () {
     const standard = o.sincere ? INCOME.sincereCredit : INCOME.standardCredit;
     const credit = (otherCredit > 0 ? 0 : standard) + otherCredit;
     const incomeTax = Math.max(0, prog.tax - Math.min(prog.tax, credit));
-    const localTax = Math.round(incomeTax * INCOME.localRate);
+    const localTax = DEC.roundWon(DEC.times(incomeTax, INCOME.localRate));
     const totalTax = incomeTax + localTax;
 
-    const autoPaid = Math.round(income * INCOME.withholdRate);
+    const autoPaid = DEC.roundWon(DEC.times(income, INCOME.withholdRate));
     const paid = o.paidAuto === false ? Math.max(0, won(o.paid)) : autoPaid;
     const diff = totalTax - paid;                  // + 추가납부, - 환급
     const refund = diff < 0 ? -diff : 0;
@@ -1312,8 +1345,8 @@ const TAX_CORE = (function () {
     const other = Math.max(0, won(o.other));
     const insurance = Math.max(0, won(o.insurance));
     const cardSales = Math.max(0, Math.min(sales, o.cardSales != null ? won(o.cardSales) : sales));
-    const feeRate = clamp(n(o.feeRate) / 100, 0, 1);
-    const fee = Math.round(sales * feeRate);
+    const feeRate = DEC.of(clamp(n(o.feeRate) / 100, 0, 1));
+    const fee = DEC.roundWon(DEC.times(sales, feeRate));
     const type = o.type === 'general' ? 'general' : 'simple';
     const rate = n(o.rate) || 0.15;
     const useCard = o.cardCredit !== false;
@@ -1331,25 +1364,25 @@ const TAX_CORE = (function () {
       const s = vatSimplified({ sales: annualSales, purchases: annualPurchases, cardSales: cardSales * 12, rate: rate, cardCredit: useCard, periodSales: annualSales });
       annualVat = s.due;
     }
-    const monthlyVat = Math.round(annualVat / 12);
+    const monthlyVat = DEC.roundWon(DEC.div(annualVat, 12));
 
     // 소득세: 공급가액(부가세 제외) 기준으로 소득을 계산
-    const netSales = Math.round(annualSales / 1.1);
-    const netPurchases = Math.round(annualPurchases / 1.1);
+    const netSales = DEC.roundWon(DEC.div(annualSales, '1.1'));
+    const netPurchases = DEC.roundWon(DEC.div(annualPurchases, '1.1'));
     const annualCosts = (rent + labor + ads + other + fee + insurance) * 12;
     const annualIncome = Math.max(0, netSales - netPurchases - annualCosts);
     const annualExpense = Math.max(0, annualSales - annualIncome);
     const taxBase = Math.max(0, annualIncome - INCOME.basicDeduction);
     const prog = progressive(taxBase);
     const incomeTax = Math.max(0, prog.tax - Math.min(prog.tax, INCOME.standardCredit));
-    const localTax = Math.round(incomeTax * INCOME.localRate);
+    const localTax = DEC.roundWon(DEC.times(incomeTax, INCOME.localRate));
     const annualIncomeTax = incomeTax + localTax;
 
-    const reserve = monthlyVat + Math.round(annualIncomeTax / 12);
+    const reserve = monthlyVat + DEC.roundWon(DEC.div(annualIncomeTax, 12));
     const net = cashProfit - reserve;
-    const margin = sales > 0 ? cashProfit / sales : 0;
-    const netMargin = sales > 0 ? net / sales : 0;
-    const reserveRate = sales > 0 ? reserve / sales : 0;
+    const margin = sales > 0 ? DEC.div(cashProfit, sales).toNumber() : 0;
+    const netMargin = sales > 0 ? DEC.div(net, sales).toNumber() : 0;
+    const reserveRate = sales > 0 ? DEC.div(reserve, sales).toNumber() : 0;
 
     return {
       sales: sales, purchases: purchases, cardSales: cardSales, rent: rent, labor: labor, ads: ads, other: other,
@@ -1358,7 +1391,7 @@ const TAX_CORE = (function () {
       monthlyVat: monthlyVat, annualVat: annualVat,
       annualSales: annualSales, annualPurchase: annualPurchases, annualExpense: annualExpense,
       annualIncome: annualIncome,
-      taxBase: taxBase, annualIncomeTax: annualIncomeTax, monthlyIncomeTax: Math.round(annualIncomeTax / 12),
+      taxBase: taxBase, annualIncomeTax: annualIncomeTax, monthlyIncomeTax: DEC.roundWon(DEC.div(annualIncomeTax, 12)),
       reserve: reserve, reserveRate: reserveRate,
       overLimit: annualSales >= VAT.simpleLimit && type === 'simple',
       nearLimit: annualSales >= VAT.simpleLimit * 0.9 && annualSales < VAT.simpleLimit
@@ -1367,7 +1400,7 @@ const TAX_CORE = (function () {
 
   return {
     YEAR: YEAR, VAT: VAT, INCOME: INCOME,
-    n: n, won: won, clamp: clamp, progressive: progressive,
+    n: n, won: won, clamp: clamp, progressive: progressive, dec: DEC,
     vatGeneral: vatGeneral, vatSimplified: vatSimplified, compareVat: compareVat,
     simpleExpense: simpleExpense, yellowLimit: yellowLimit, pensionEstimate: pensionEstimate,
     incomeSettlement: incomeSettlement, monthlySim: monthlySim
