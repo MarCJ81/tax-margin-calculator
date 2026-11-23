@@ -4,7 +4,7 @@
 
 | 구성 요소 | 버전 | 라이선스 | 쓰는 곳 | 원본 |
 | --- | --- | --- | --- | --- |
-| decimal.js | 10.6.0 | MIT | `assets/vendor/decimal.min.js` — 부가세·종소세·순수익 금액 연산 | https://github.com/MikeMcl/decimal.js |
+| decimal.js | 10.6.0 | MIT | `assets/vendor/decimal.js` — 부가세·종소세·순수익 금액 연산 | https://github.com/MikeMcl/decimal.js |
 
 ## MIT License (decimal.js)
 

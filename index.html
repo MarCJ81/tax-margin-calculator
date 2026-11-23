@@ -1075,13 +1075,13 @@ fieldset.field{border:0;padding:0;margin:0 0 14px;min-width:0}
   <p class="rp-stamp">1인사업자 부가세·종소세·순수익 계산기 · 서버 전송 0건</p>
 </div>
 
-<script src="assets/vendor/decimal.min.js"></script>
+<script src="assets/vendor/decimal.js"></script>
 <script>
 
 'use strict';
 /* ==CORE-START== */
 /* 1인사업자 세금·순수익 계산기 계산 코어 (2026년 기준)
-   금액 연산은 decimal.js(MIT, assets/vendor/decimal.min.js)로만 한다. */
+   금액 연산은 decimal.js(MIT, assets/vendor/decimal.js)로만 한다. */
 const TAX_CORE = (function () {
   const YEAR = 2026;
 
@@ -1090,7 +1090,7 @@ const TAX_CORE = (function () {
      엔진이 없으면 조용히 틀린 숫자를 내지 않도록 즉시 실패한다. */
   const DEC = (function () {
     if (typeof Decimal !== 'function') {
-      throw new Error('decimal.js 엔진을 불러오지 못했습니다 (assets/vendor/decimal.min.js)');
+      throw new Error('decimal.js 엔진을 불러오지 못했습니다 (assets/vendor/decimal.js)');
     }
     Decimal.set({ precision: 40, rounding: Decimal.ROUND_HALF_UP, toExpNeg: -40, toExpPos: 40 });
     function of(v) {

@@ -108,7 +108,7 @@ $ python3 livetest.py   # 배포된 GitHub Pages 실서버
 
 ## 계산 엔진 — decimal.js (MIT)
 
-- 부가세·종소세·순수익 계산을 전부 `decimal.js`(MIT, v10.6.0) 고정밀 연산으로 처리합니다. `assets/vendor/decimal.min.js`에 저장소 안 파일로 들어 있어 실행 중 외부 요청은 0건입니다.
+- 부가세·종소세·순수익 계산을 전부 `decimal.js`(MIT, v10.6.0) 고정밀 연산으로 처리합니다. `assets/vendor/decimal.js`에 저장소 안 파일로 들어 있어 실행 중 외부 요청은 0건입니다.
 - 부가세 `매출 × 10/110`, 공급대가 `÷ 1.1`, 원천징수 3.3%처럼 반올림 경계에 걸리는 나눗셈을 유리수 순서(곱셈 먼저)로 계산하고, 지방소득세는 소득세의 10%를 원 단위로 다시 계산합니다.
 - 검증: `node test.js` 125개 통과, `python3 uitest.py` 실제 Chrome 238개 통과(신규 엔진 브라우저 검증 포함).
 - 라이선스 고지: `THIRD-PARTY-NOTICES.md`.
