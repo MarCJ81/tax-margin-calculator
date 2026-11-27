@@ -534,8 +534,8 @@ fieldset.field{border:0;padding:0;margin:0 0 14px;min-width:0}
   <div class="hero-grid">
     <div class="hero-copy">
       <p class="eyebrow"><b>2026</b> 부가세 · 종합소득세 · 진짜 순수익</p>
-      <h1>이번 분기 세금,<br><em>10초</em>면 보입니다.</h1>
-      <p class="lede">매출과 매입만 넣으세요. 간이·일반 부가세, 5월에 돌려받을 종소세, 세금 통장에 미리 떼어둘 돈과 <b>분기 예치 계획</b>까지 한 화면에서 계산합니다.</p>
+      <h1 data-i18n-block="hero-h1">이번 분기 세금,<br><em>10초</em>면 보입니다.</h1>
+      <p class="lede" data-i18n-block="hero-lede">매출과 매입만 넣으세요. 간이·일반 부가세, 5월에 돌려받을 종소세, 세금 통장에 미리 떼어둘 돈과 <b>분기 예치 계획</b>까지 한 화면에서 계산합니다.</p>
       <ul class="chips">
         <li>간이과세 기준 <b>1억 400만원</b></li>
         <li>납부면제 <b>4,800만원</b></li>
@@ -1036,7 +1036,7 @@ fieldset.field{border:0;padding:0;margin:0 0 14px;min-width:0}
         </div>
         <div class="note-tile">
           <h3>입력값은 이 브라우저에만</h3>
-          <p>외부 요청 <b>0건</b>, 분석 도구 <b>0개</b>, 계정 <b>0개</b>. 입력값은 이 기기의 저장소에만 남고 <b>입력값 지우기</b>로 언제든 지울 수 있습니다.</p>
+          <p data-i18n-block="privacy-note">외부 요청 <b>0건</b>, 분석 도구 <b>0개</b>, 계정 <b>0개</b>. 입력값은 이 기기의 저장소에만 남고 <b>입력값 지우기</b>로 언제든 지울 수 있습니다.</p>
         </div>
       </div>
     </div>
@@ -1560,7 +1560,7 @@ const TAX_CORE = (function () {
   function renderVat() {
     const o = calcVat();
     const r = o.r, v = o.v, ind = o.ind;
-    $('v-rate-hint').textContent = '부가가치율 ' + pct(ind.rate, 0) + ' → 매출의 ' + pct(ind.rate * 10, 1) + '를 부가세로 냅니다.';
+    $('v-rate-hint').textContent = '부가가치율 ' + pct(ind.rate, 0) + ' → 매출의 ' + pct(ind.rate / 10, 1) + '를 부가세로 냅니다.';
 
     $('vg-total').innerHTML = wonHTML(r.general.due);
     $('vg-sales-tax').textContent = money(r.general.salesTax);
@@ -2343,5 +2343,6 @@ const TAX_CORE = (function () {
 })();
 
 </script>
+<script src="i18n.js"></script>
 </body>
 </html>
